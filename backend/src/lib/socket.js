@@ -7,31 +7,79 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:5173"],
+        origin: [
+            "http://localhost:5173",
+            "https://quick-quack-lovat.vercel.app"
+        ],
+        credentials: true,
+        methods: ["GET", "POST"],
+        allowedHeaders: ["Content-Type", "Authorization"]
     },
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
+// Store for online users: userId -> socketId mapping
+const userSocketMap = new Map();
+
 export function getReceiverSocketId(userId) {
-    return userSocketMap[userId];
+    return userSocketMap.get(userId);
 }
 
-// used to store online users
-const userSocketMap = {}; // {userId: socketId}
-
 io.on("connection", (socket) => {
-    console.log("A user connected", socket.id);
+    console.log("Socket connected:", socket.id);
 
+    // Get userId from socket handshake
     const userId = socket.handshake.query.userId;
-    if (userId) userSocketMap[userId] = socket.id;
 
-    // io.emit() is used to send events to all the connected clients
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    if (userId) {
+        userSocketMap.set(userId, socket.id);
+        console.log("User connected:", userId);
 
+        // Broadcast online users to all connected clients
+        io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
+    }
+
+    // Handle disconnection
     socket.on("disconnect", () => {
-        console.log("A user disconnected", socket.id);
-        delete userSocketMap[userId];
-        io.emit("getOnlineUsers", Object.keys(userSocketMap));
+        console.log("Socket disconnected:", socket.id);
+
+        if (userId) {
+            userSocketMap.delete(userId);
+            console.log("User disconnected:", userId);
+
+            // Broadcast updated online users list
+            io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
+        }
     });
+
+    // Handle connection errors
+    socket.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+    });
+
+    // Handle errors
+    socket.on("error", (error) => {
+        console.error("Socket error:", error);
+    });
+});
+
+// Error handling for the io server
+io.engine.on("connection_error", (error) => {
+    console.error("Connection error:", error);
+});
+
+// Middleware to handle authentication
+io.use((socket, next) => {
+    const userId = socket.handshake.query.userId;
+
+    if (!userId) {
+        return next(new Error("User ID not provided"));
+    }
+
+    // Attach userId to socket for later use
+    socket.userId = userId;
+    next();
 });
 
 export { io, app, server };

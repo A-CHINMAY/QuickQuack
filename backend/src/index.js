@@ -15,12 +15,12 @@ const __dirname = path.resolve();
 
 // Define allowed origins based on environment
 const allowedOrigins = [
-    "http://localhost:5173",
-    "https://quick-quack-lovat.vercel.app"
+    "http://localhost:5173",  // Local development URL
+    "https://quick-quack-lovat.vercel.app" // Production frontend URL (e.g., Vercel)
 ];
 
 // Middleware
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));  // Allow large JSON payloads if needed
 app.use(cookieParser());
 
 // Enhanced CORS configuration
@@ -29,27 +29,29 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
 
+        // Allow specific origins only
         if (allowedOrigins.indexOf(origin) !== -1) {
             return callback(null, true);
         }
 
+        // Reject if origin is not allowed
         console.error(`Origin ${origin} not allowed by CORS`);
         return callback(new Error('Not allowed by CORS'));
     },
-    credentials: true,
+    credentials: true, // Allows cookies and credentials to be sent along with requests
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['set-cookie']
+    exposedHeaders: ['set-cookie']  // Allow the frontend to access the set-cookie header
 }));
 
 // Pre-flight OPTIONS request handling
-app.options('*', cors());
+app.options('*', cors());  // Pre-flight CORS handling for all routes
 
 // API routes
-app.use("/api/auth", authRoutes);
-app.use("/api/messages", messageRoutes);
+app.use("/api/auth", authRoutes);  // Auth routes (login, signup, etc.)
+app.use("/api/messages", messageRoutes);  // Message routes (sending, receiving messages, etc.)
 
-// Error handling middleware
+// Error handling middleware for uncaught errors
 app.use((err, req, res, next) => {
     console.error('Error:', err);
     if (err.message === 'Not allowed by CORS') {
@@ -64,7 +66,7 @@ app.use((err, req, res, next) => {
 
 // Production setup
 if (process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, "../frontend/dist")));
+    app.use(express.static(path.join(__dirname, "../frontend/dist")));  // Serve static files in production
 
     app.get("*", (req, res) => {
         res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));

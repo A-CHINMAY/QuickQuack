@@ -16,11 +16,23 @@ dotenv.config();
 const PORT = process.env.PORT || 5001;
 const __dirname = path.resolve();
 
+// Define allowed origins
+const allowedOrigins = [
+    "http://localhost:5173", // Local development
+    "https://quick-quack-lovat.vercel.app", // Vercel frontend
+];
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(
     cors({
-        origin: "http://localhost:5173",
+        origin: function (origin, callback) {
+            if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+                callback(null, true);
+            } else {
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
         credentials: true,
     })
 );

@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
 import http from "http";
 import express from "express";
-import User from "./models/User";  // Assuming you have a User model to fetch user info from DB
+import User from "../models/user.model.js";  // Assuming you have a User model to fetch user info from DB
 
 const app = express();
 const server = http.createServer(app);

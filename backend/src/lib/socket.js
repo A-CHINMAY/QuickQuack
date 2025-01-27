@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import http from "http";
 import express from "express";
+import User from "./models/User";  // Assuming you have a User model to fetch user info from DB
 
 const app = express();
 const server = http.createServer(app);
@@ -8,8 +9,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: [
-            "http://localhost:5173",
-            "https://quick-quack-lovat.vercel.app"
+            "http://localhost:5173",  // Frontend URL for development
+            "https://quick-quack-lovat.vercel.app"  // Frontend URL for production
         ],
         credentials: true,
         methods: ["GET", "POST"],
@@ -36,11 +37,20 @@ io.on("connection", (socket) => {
         userSocketMap.set(userId, socket.id);
         console.log("User connected:", userId);
 
-        // Broadcast online users to all connected clients
-        io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
+        // Fetch user profile details from the database
+        User.findById(userId).then(user => {
+            // Send the full list of online users with their details
+            const onlineUsersWithProfiles = Array.from(userSocketMap.keys()).map(id => ({
+                userId: id,
+                username: user.username,  // Assuming user has a 'username' field
+                avatar: user.avatar,  // Assuming user has an 'avatar' field
+            }));
+
+            // Emit online users with their profile data
+            io.emit("getOnlineUsers", onlineUsersWithProfiles);
+        });
     }
 
-    // Handle disconnection
     socket.on("disconnect", () => {
         console.log("Socket disconnected:", socket.id);
 
@@ -53,15 +63,7 @@ io.on("connection", (socket) => {
         }
     });
 
-    // Handle connection errors
-    socket.on("connect_error", (error) => {
-        console.error("Socket connection error:", error);
-    });
-
-    // Handle errors
-    socket.on("error", (error) => {
-        console.error("Socket error:", error);
-    });
+    // Other socket event handling...
 });
 
 // Error handling for the io server
